@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Ignore downloaded assets/references
+assests/Deep-Q-Learning-Paper-To-Code-master/
