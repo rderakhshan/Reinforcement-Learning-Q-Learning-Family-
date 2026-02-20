@@ -8,11 +8,14 @@ Typical usage example:
     python main.py
 """
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress all TensorFlow informational logs
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0' # Suppress oneDNN warnings
+
 import numpy as np
 from agent import Agent
 from utils import plot_learning_curve, make_env, manage_memory
 from gymnasium import wrappers
-import os
 
 if __name__ == '__main__':
     # Evaluates bounding limits validating isolated graphical scaling paths reliably
@@ -37,7 +40,7 @@ if __name__ == '__main__':
     # Initializes Agent maintaining TensorFlow/Keras computations structure efficiently
     agent = Agent(gamma=0.99, epsilon=1, lr=0.0001,
                   input_dims=(env.observation_space.shape),
-                  n_actions=int(env.action_space.n), mem_size=50000, eps_min=0.1,
+                  n_actions=int(env.action_space.n), mem_size=15000, eps_min=0.1,
                   batch_size=32, replace=1000, eps_dec=1e-5,
                   chkpt_dir=models_dir, algo='DQNAgent',
                   env_name='PongNoFrameskip-v4')

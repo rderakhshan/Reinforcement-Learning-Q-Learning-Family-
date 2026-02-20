@@ -14,6 +14,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras.optimizers import Adam
+import os
 from network import DeepQNetwork
 from replay_memory import ReplayBuffer
 
@@ -81,7 +82,7 @@ class Agent:
         self.learn_step_counter = 0
         
         # Formatting model string names safely combining local structures globally
-        self.fname = self.chkpt_dir + self.env_name + '_' + self.algo + '_'
+        self.fname = os.path.join(self.chkpt_dir, self.env_name + '_' + self.algo + '_')
 
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
@@ -94,14 +95,14 @@ class Agent:
 
     def save_models(self):
         """Serializes TensorFlow weights caching physical properties logically."""
-        self.q_eval.save(self.fname+'q_eval')
-        self.q_next.save(self.fname+'q_next')
+        self.q_eval.save(self.fname+'q_eval.keras')
+        self.q_next.save(self.fname+'q_next.keras')
         print('... models saved successfully ...')
 
     def load_models(self):
         """Reconstructs historical models loading saved representations inherently."""
-        self.q_eval = keras.models.load_model(self.fname+'q_eval')
-        self.q_next = keras.models.load_model(self.fname+'q_next')
+        self.q_eval = keras.models.load_model(self.fname+'q_eval.keras')
+        self.q_next = keras.models.load_model(self.fname+'q_next.keras')
         print('... models loaded successfully ...')
 
     def store_transition(self, state, action, reward, state_, done):
@@ -133,6 +134,12 @@ class Agent:
         states_ = tf.convert_to_tensor(new_state)
         return states, actions, rewards, states_, dones
 
+    @tf.function
+    def _predict_action(self, state):
+        """Compiled graph function drastically dropping native Python forward-pass overhead."""
+        actions = self.q_eval(state)
+        return tf.math.argmax(actions, axis=1)[0]
+
     def choose_action(self, observation):
         """Generates appropriate path execution applying algorithmic decay logically.
 
@@ -143,10 +150,8 @@ class Agent:
             int: Discrete bounded logic safely matching native environments properly.
         """
         if np.random.random() > self.epsilon:
-            state = tf.convert_to_tensor([observation])
-            actions = self.q_eval(state)
-            # Extracts integer mapped prediction variables correctly utilizing numpy functions intuitively
-            action = tf.math.argmax(actions, axis=1).numpy()[0]
+            state = tf.convert_to_tensor([observation], dtype=tf.float32)
+            action = self._predict_action(state).numpy()
         else:
             action = np.random.choice(self.action_space)
         return action
@@ -160,6 +165,35 @@ class Agent:
         """Scales numeric evaluation limits generating constrained arrays dynamically."""
         self.epsilon = self.epsilon - self.eps_dec \
                            if self.epsilon > self.eps_min else self.eps_min
+
+    @tf.function
+    def _train_step(self, states, actions, rewards, states_, dones, indices, action_indices):
+        """Static computation graph dramatically bypassing sluggish Eager Execution scaling logs natively."""
+        with tf.GradientTape() as tape:
+            # Map precise Q-predictions corresponding cleanly to selected actions
+            q_pred = tf.gather_nd(self.q_eval(states), indices=action_indices)
+            q_next = self.q_next(states_)
+
+            # Forecast limits logically executing optimal paths dynamically
+            max_actions = tf.math.argmax(q_next, axis=1, output_type=tf.int32)
+            max_action_idx = tf.stack([indices, max_actions], axis=1)
+
+            # Force tensor typecast explicitly removing numpy() dependency allowing Graph mode compilation!
+            dones_float = tf.cast(dones, tf.float32)
+            
+            # Limit future boundaries calculating standard discount rewards properly
+            q_target = rewards + \
+                self.gamma*tf.gather_nd(q_next, indices=max_action_idx) * \
+                (1.0 - dones_float)
+
+            # Applies isolated constraint regressions tracking targets implicitly
+            loss = keras.losses.MSE(q_pred, q_target)
+
+        # Computes localized gradients modifying arrays logically
+        params = self.q_eval.trainable_variables
+        grads = tape.gradient(loss, params)
+
+        self.q_eval.optimizer.apply_gradients(zip(grads, params))
 
     def learn(self):
         """Calculates loss gradients executing regression tracking models natively.
@@ -177,28 +211,8 @@ class Agent:
         indices = tf.range(self.batch_size, dtype=tf.int32)
         action_indices = tf.stack([indices, actions], axis=1)
 
-        with tf.GradientTape() as tape:
-            # Map precise Q-predictions corresponding cleanly to selected actions
-            q_pred = tf.gather_nd(self.q_eval(states), indices=action_indices)
-            q_next = self.q_next(states_)
-
-            # Forecast limits logically executing optimal paths dynamically
-            max_actions = tf.math.argmax(q_next, axis=1, output_type=tf.int32)
-            max_action_idx = tf.stack([indices, max_actions], axis=1)
-
-            # Limit future boundaries calculating standard discount rewards properly
-            q_target = rewards + \
-                self.gamma*tf.gather_nd(q_next, indices=max_action_idx) *\
-                (1 - dones.numpy())
-
-            # Applies isolated constraint regressions tracking targets implicitly
-            loss = keras.losses.MSE(q_pred, q_target)
-
-        # Computes localized gradients modifying arrays logically
-        params = self.q_eval.trainable_variables
-        grads = tape.gradient(loss, params)
-
-        self.q_eval.optimizer.apply_gradients(zip(grads, params))
+        # Execute ultra-fast Compiled Graph step instead of eager loops
+        self._train_step(states, actions, rewards, states_, dones, indices, action_indices)
 
         self.learn_step_counter += 1
         self.decrement_epsilon()

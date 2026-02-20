@@ -38,19 +38,31 @@ class DeepQNetwork(keras.Model):
         """
         super(DeepQNetwork, self).__init__()
         
-        # Geometrically scale frames utilizing channels_first explicitly matching PyTorch format
-        self.conv1 = Conv2D(32, 8, strides=(4, 4), activation='relu',
-                            data_format='channels_first',
-                            input_shape=input_dims)
-        self.conv2 = Conv2D(64, 4, strides=(2, 2), activation='relu',
-                            data_format='channels_first')
-        self.conv3 = Conv2D(64, 3, strides=(1, 1), activation='relu',
-                            data_format='channels_first')
+        self.input_dims = input_dims
+        self.n_actions = n_actions
+        
+        # Geometrically scale frames utilizing channels_last (NHWC) explicitly allowing CPU processing
+        self.conv1 = Conv2D(32, 8, strides=(4, 4), activation='relu')
+        self.conv2 = Conv2D(64, 4, strides=(2, 2), activation='relu')
+        self.conv3 = Conv2D(64, 3, strides=(1, 1), activation='relu')
                             
         self.flat = Flatten()
         
         self.fc1 = Dense(512, activation='relu')
         self.fc2 = Dense(n_actions, activation=None)
+
+    def get_config(self):
+        """Allows Keras to serialize tracking parameters cleanly internally.
+
+        Returns:
+            dict: The localized dictionary bounding tracking logic dynamically.
+        """
+        config = super(DeepQNetwork, self).get_config()
+        config.update({
+            "input_dims": self.input_dims,
+            "n_actions": self.n_actions,
+        })
+        return config
 
     def call(self, state):
         """Executes Keras feed-forward evaluation mathematically.
@@ -61,7 +73,10 @@ class DeepQNetwork(keras.Model):
         Returns:
             tf.Tensor: Array outputs evaluating choices logically.
         """
-        x = self.conv1(state)
+        # Transpose batched arrays from PyTorch format (N, C, H, W) to CPU-safe TensorFlow format (N, H, W, C)
+        import tensorflow as tf
+        x = tf.transpose(state, perm=[0, 2, 3, 1])
+        x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.flat(x)
