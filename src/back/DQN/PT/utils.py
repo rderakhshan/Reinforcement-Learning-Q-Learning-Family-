@@ -78,7 +78,7 @@ def plot_learning_curve(x, scores, epsilons, filename, lines=None):
     except IOError:
         pass
 
-
+# ====================================================================================================
 class RepeatActionAndMaxFrame(gym.Wrapper):
     """Forces actions strictly evaluated consolidating repeating cycles eliminating clipping.
 
@@ -145,6 +145,8 @@ class RepeatActionAndMaxFrame(gym.Wrapper):
 
         return obs, info
 
+
+# ====================================================================================================
 class PreprocessFrame(gym.ObservationWrapper):
     """Processes dimensional geometric boundaries projecting normalized mathematical sequences natively.
 
