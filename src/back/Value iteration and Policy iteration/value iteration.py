@@ -87,6 +87,8 @@ class class_value_iteration():
         """
         # Initialize V0 to 1
         state_value_k = np.ones(self.state_space_size)
+
+
         while np.linalg.norm(state_value_k - self.state_value, ord=1)>tolerance and steps>0:
             steps -= 1
             self.state_value = state_value_k.copy()
@@ -103,6 +105,8 @@ class class_value_iteration():
             #state_value_k = state_value_k.copy()
             # Iterate through all states
             q_table = np.zeros(shape=(self.state_space_size, self.action_space_size))
+
+
             for state in range(self.state_space_size):
                 qvalue_list = []
                 # Iterate through all actions
@@ -226,8 +230,6 @@ class class_value_iteration():
             episode.append({"state": state, "action": action, "reward": reward, "next_state": next_state,
                             "next_action": next_action})
         return episode
-
-
 
 if __name__ == "__main__":
     """
